@@ -40,6 +40,14 @@ Publish with the manifest in `sites/manifest.json` (`assetsDirectory: ../dist`).
 
 Keeping `dist/` as the only deploy root matters: the workspace also holds screenshots and tooling under `.dev-artifacts/`, which are ignored and must not be bundled.
 
+### GitHub Pages
+
+Every push to `main` runs `.github/workflows/deploy.yml`: it rebuilds `dist/` and publishes it to GitHub Pages. No secrets are needed — the workflow uses the built-in `GITHUB_TOKEN` and the `github-pages` environment.
+
+**Pages:** https://occultarcane.github.io/choking-lotus/
+
+Because that URL is nested under the repository name, every asset reference in the HTML and the product snapshot is relative (`css/…`, `assets/…`, `js/…`) rather than root-absolute, so the same build works on Pages and on a root domain.
+
 ## Credits
 
 Page designed and coded by xr™.
