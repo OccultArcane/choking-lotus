@@ -26,14 +26,8 @@ export default {
       });
     }
 
-    // Everything else falls back to the single page.
-    const shell = await env.ASSETS.fetch(new URL('/index.html', url));
-    return new Response(shell.body, {
-      status: 200,
-      headers: {
-        'content-type': 'text/html; charset=utf-8',
-        'cache-control': 'public, max-age=0, must-revalidate'
-      }
-    });
+    // No nested routes exist, and asset links are relative, so send any other
+    // path back to the single page instead of serving the shell from a subpath.
+    return Response.redirect(new URL('/', url).toString(), 302);
   }
 };
