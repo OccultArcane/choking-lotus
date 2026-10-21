@@ -1,52 +1,57 @@
-# Choking Lotus — launch page
+# Choking Lotus
 
-Single-page launch site for **Choking Lotus**, an IMVU atelier. A black-chrome lotus emblem sits at the centre of a liquid ripple; the store's newest products orbit it as floating relic cards, and the whole page is built to sit in one viewport with no scroll.
+Single-screen launch page for **Choking Lotus**, an IMVU atelier. A chrome lotus sits at the centre of a liquid ripple, and the store's newest products orbit it as translucent cards. No scrolling, no sections — just the emblem, the drop, the legal line and a typing credit.
 
-**Live:** https://site-65cbd85114804424ab593402b137206b.freebuff.page
+**Live (Freebuff):** https://site-65cbd85114804424ab593402b137206b.freebuff.page
+**Live (GitHub Pages):** https://occultarcane.github.io/choking-lotus/
 
-## What's in it
+## Files
 
-- `index.html` — the page. Header, hero (orbit + emblem), and the footer legal strip with the typewriter credit notice.
-- `css/style.css` — the visual system: liquid backdrop, chrome type, orbit mechanics, translucent cards, responsive layout.
-- `js/main.js` — interactions: orbit placement, live product feed read-back, typewriter notice, cursor, menu, magnetic buttons.
-- `js/products.js` — snapshot of the IMVU feed (titles, thumbnails, prices) used as the fallback and for price data.
-- `assets/` — lotus emblem, liquid backdrop, product thumbnails and card art.
-- `footer-note.txt` — the credit line typed into the popup. Edit this file to change the message; no code change needed.
+| Path | What it is |
+| --- | --- |
+| `index.html` | The whole page: backdrop layers, orbit markup, Instagram mark, legal strip, credit notice. |
+| `css/style.css` | Every rule the page uses — backdrop, orbit mechanics, cards, responsive sizing, reduced-motion handling. |
+| `js/main.js` | Builds the orbit cards, runs the cursor/parallax atmosphere and types the credit notice. |
+| `js/products.js` | Snapshot of the IMVU feed (titles, thumbnails, prices) used as the fallback when the live panel is blocked. |
+| `assets/` | `lotus.webp`, `liquid-swirl.webp` and the product thumbnails. |
+| `footer-note.txt` | Text typed into the popup. Edit this file to change the message; no code change needed. |
+| `sites/` | Deploy glue: build script, manifest, asset worker, wrangler config. |
 
 Product cards refresh themselves: `#imvu-feed-source` loads the gafcodes "new products" panel for the store, and `main.js` reads the rendered links back into the orbit, so new drops appear on reload.
 
-## Local development
+## Local preview
 
-The site is static — any static server works:
+The page is static — serve the folder and open it:
 
 ```bash
-npx serve .
-# or
 python -m http.server 4173
+# or
+npx serve .
 ```
 
 Then open <http://localhost:4173>.
 
 ## Deploy
 
-The deployable output is assembled into `dist/` and served by a tiny asset worker so 404s and the page fallback behave correctly.
+`dist/` is the only deploy root. The build script copies the site files into it; nothing else is ever published.
 
 ```bash
-node sites/build.mjs          # copy index.html, css, js, assets, footer-note.txt into dist/
-npx wrangler dev --config sites/wrangler.jsonc --port 8788
+node sites/build.mjs
+npx wrangler dev --config sites/wrangler.jsonc --port 8788   # verify in workerd
 ```
 
-Publish with the manifest in `sites/manifest.json` (`assetsDirectory: ../dist`).
+- **Freebuff Sites** — deploy with `sites/manifest.json` (`assetsDirectory: ../dist`).
+- **GitHub Pages** — automatic. Every push to `main` runs `.github/workflows/deploy.yml`, which rebuilds `dist/` and publishes it. No secrets needed; it uses the built-in token.
 
-Keeping `dist/` as the only deploy root matters: the workspace also holds screenshots and tooling under `.dev-artifacts/`, which are ignored and must not be bundled.
+Asset paths are relative so the same build works at a domain root and under `/choking-lotus/`.
 
-### GitHub Pages
+## Rollback
 
-Every push to `main` runs `.github/workflows/deploy.yml`: it rebuilds `dist/` and publishes it to GitHub Pages. No secrets are needed — the workflow uses the built-in `GITHUB_TOKEN` and the `github-pages` environment.
+`git tag pre-cleanup` marks the earlier multi-section version of the page (hidden sections, full CSS, nine static cards). To go back:
 
-**Pages:** https://occultarcane.github.io/choking-lotus/
-
-Because that URL is nested under the repository name, every asset reference in the HTML and the product snapshot is relative (`css/…`, `assets/…`, `js/…`) rather than root-absolute, so the same build works on Pages and on a root domain.
+```bash
+git checkout pre-cleanup -- index.html css js assets
+```
 
 ## Credits
 
