@@ -130,7 +130,7 @@
   if (footerNote) {
     const noteText = $('[data-footer-note-text]', footerNote);
     const noteClose = $('[data-footer-note-close]', footerNote);
-    const fallbackNote = 'page designed and coded by xr™';
+    const fallbackNote = 'Page designed and coded by xr™';
     let typingTimer;
 
     const showNote = (raw) => {

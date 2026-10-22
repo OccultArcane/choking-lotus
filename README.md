@@ -10,7 +10,7 @@ Single-screen launch page for **Choking Lotus**, an IMVU atelier. A chrome lotus
 | Path | What it is |
 | --- | --- |
 | `index.html` | The whole page: backdrop layers, orbit markup, Instagram mark, legal strip, credit notice. |
-| `css/style.css` | Every rule the page uses — backdrop, orbit mechanics, cards, responsive sizing, reduced-motion handling. |
+| `css/style.css` | Every rule the page uses — backdrop, orbit mechanics, cards, fluid sizing, reduced-motion handling. |
 | `js/main.js` | Builds the orbit cards, runs the cursor/parallax atmosphere and types the credit notice. |
 | `js/products.js` | Snapshot of the IMVU feed (titles, thumbnails, prices) used as the fallback when the live panel is blocked. |
 | `assets/` | `lotus.webp`, `liquid-swirl.webp` and the product thumbnails. |
@@ -18,6 +18,8 @@ Single-screen launch page for **Choking Lotus**, an IMVU atelier. A chrome lotus
 | `sites/` | Deploy glue: build script, manifest, asset worker, wrangler config. |
 
 Product cards refresh themselves: `#imvu-feed-source` loads the gafcodes "new products" panel for the store, and `main.js` reads the rendered links back into the orbit, so new drops appear on reload.
+
+The layout is a single composition, not a desktop one plus a mobile one. Everything inside the orbit is sized from `--size`, and `--size` itself is capped by window height (`74vh`), window width (`80vw`) and the room left by the credit notice and legal strip, so the page scales continuously at any window size without breakpoints.
 
 ## Local preview
 
