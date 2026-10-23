@@ -131,6 +131,44 @@
     if (document.fonts?.ready) document.fonts.ready.then(fitOrbit).catch(() => {});
   }
 
+  /* ------------------------------------------------ live friends, where possible */
+  // The row ships with the page, so it always renders. On the Freebuff deployment
+  // a same-origin worker route proxies the IMVU lookup, which the browser cannot
+  // call itself, so a renamed avatar or a new profile picture shows up on the
+  // next load. On GitHub Pages that route does not exist, the fetch 404s and the
+  // committed copy stays in place.
+  const friendLinks = $$('.friend');
+  if (friendLinks.length) {
+    const ids = friendLinks.map((link) => link.dataset.imvuId).filter((id) => /^\d+$/.test(id));
+    if (ids.length) {
+      fetch(`api/friends?ids=${ids.join(',')}`, { headers: { accept: 'application/json' } })
+        .then((response) => (response.ok ? response.json() : null))
+        .then((payload) => {
+          if (!payload || !Array.isArray(payload.friends)) return;
+          for (const live of payload.friends) {
+            const link = friendLinks.find((el) => el.dataset.imvuId === String(live.id));
+            if (!link) continue;
+
+            const username = typeof live.username === 'string' ? live.username.trim() : '';
+            if (username) {
+              const label = $('.friend__name', link);
+              if (label && label.textContent !== username) label.textContent = username;
+              link.setAttribute('aria-label', `Shop ${username} on IMVU, opens in a new tab`);
+            }
+
+            const portrait = typeof live.portrait === 'string' ? live.portrait : '';
+            const image = $('.friend__pic', link);
+            if (image && /^https:\/\//.test(portrait) && image.src !== portrait) {
+              const fallback = image.src;
+              image.addEventListener('error', () => { image.src = fallback; }, { once: true });
+              image.src = portrait;
+            }
+          }
+        })
+        .catch(() => {});
+    }
+  }
+
   /* ------------------------------------------------------ pointer ambience */
 
   const cursor = $('.cursor');
