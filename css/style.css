@@ -879,11 +879,18 @@ body {
   font-family: var(--font-serif);
   font-style: italic;
   font-weight: 400;
+  --friends-flag-size: clamp(7px, 0.56vw, 8.5px);
   font-size: clamp(14px, 1.3vw, 20px);
   line-height: 1.05;
   letter-spacing: 0.005em;
   color: rgba(232, 235, 237, 0.92);
   text-shadow: rgba(0, 0, 0, 0.9) 0px 1px 18px;
+}
+.friends__title-text {
+  /* The flag hangs off the end of the words rather than the end of the row,
+     so it stays clear of the Instagram mark at any width. */
+  display: inline-block;
+  position: relative;
 }
 .friends__title::after {
   content: "";
@@ -891,6 +898,53 @@ body {
   height: 1px;
   margin-top: clamp(8px, 1.1vh, 13px);
   background: linear-gradient(90deg, rgba(232, 235, 237, 0.3), rgba(232, 235, 237, 0.02));
+}
+/* Fades in when the live friends response replaces the shipped row, then
+   fades back out so the heading never carries a permanent badge. */
+.friends__flag {
+  /* Out of flow, so the hairline keeps matching the width of the row beneath. */
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  margin: -0.8em 0px 0px 8px;
+  display: inline-grid;
+  grid-auto-flow: column;
+  align-items: center;
+  gap: 5px;
+  height: 1.6em;
+  padding: 0px 0.55em 0px 0.45em;
+  border: 1px solid rgba(118, 0, 188, 0.38);
+  border-radius: 2px;
+  background: rgba(9, 11, 13, 0.72);
+  box-shadow: rgba(118, 0, 188, 0.22) 0px 0px 14px;
+  font-family: var(--font-mono);
+  font-style: normal;
+  font-weight: 500;
+  font-size: var(--friends-flag-size);
+  line-height: 1;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(196, 163, 220, 0.9);
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(2px);
+  transition: opacity 0.45s ease, transform 0.55s var(--ease), visibility 0s linear 0.6s;
+  white-space: nowrap;
+}
+.friends__flag::before {
+  content: "";
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgb(150, 60, 205);
+  box-shadow: rgba(118, 0, 188, 0.85) 0px 0px 7px;
+}
+.friends__flag.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0px);
+  transition-delay: 0s;
 }
 .friends__list {
   display: flex;

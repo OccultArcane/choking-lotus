@@ -140,6 +140,14 @@
   // Only the Freebuff deployment serves that route (and local wrangler does);
   // asking elsewhere would just log a 404, so the static row stands as-is.
   const friendLinks = $$('.friend');
+  const friendFlag = $('[data-friends-flag]');
+  let flagTimer = 0;
+  const flashFriendFlag = () => {
+    if (!friendFlag) return;
+    window.clearTimeout(flagTimer);
+    friendFlag.classList.add('is-visible');
+    flagTimer = window.setTimeout(() => friendFlag.classList.remove('is-visible'), 6000);
+  };
   const hasFriendsRoute = /\.freebuff\.page$/.test(window.location.hostname) ||
     window.location.hostname === '127.0.0.1' ||
     window.location.hostname === 'localhost';
@@ -150,6 +158,7 @@
         .then((response) => (response.ok ? response.json() : null))
         .then((payload) => {
           if (!payload || !Array.isArray(payload.friends)) return;
+          let applied = false;
           for (const live of payload.friends) {
             const link = friendLinks.find((el) => el.dataset.imvuId === String(live.id));
             if (!link) continue;
@@ -159,6 +168,7 @@
               const label = $('.friend__name', link);
               if (label && label.textContent !== username) label.textContent = username;
               link.setAttribute('aria-label', `Shop ${username} on IMVU, opens in a new tab`);
+              applied = true;
             }
 
             const portrait = typeof live.portrait === 'string' ? live.portrait : '';
@@ -169,6 +179,7 @@
               image.src = portrait;
             }
           }
+          if (applied) flashFriendFlag();
         })
         .catch(() => {});
     }

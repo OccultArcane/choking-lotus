@@ -26,7 +26,7 @@ The layout is a single composition, not a desktop one plus a mobile one: everyth
 
 The four creators in "Shop my friends" come from IMVU's public user lookup (`https://api.imvu.com/user/user-<id>`). Each row carries the creator's numeric IMVU id in `data-imvu-id`; ids never change, so a rename is followed rather than lost. That endpoint sends no `Access-Control-Allow-Origin` header, so the browser cannot call it from the page; the usernames, shop links and portraits are shipped with the site instead and kept current by a scheduled job.
 
-On Freebuff, `sites/worker.js` also exposes a same-origin `GET /api/friends?ids=…` route that proxies IMVU's lookup, and `js/main.js` calls it on load, so a renamed avatar or a new profile picture is live on the next visit. GitHub Pages has no such route; there the fetch 404s and the committed copy stands, which the nightly job keeps current.
+On Freebuff, `sites/worker.js` also exposes a same-origin `GET /api/friends?ids=…` route that proxies IMVU's lookup, and `js/main.js` calls it on load, so a renamed avatar or a new profile picture is live on the next visit. When that response lands, a small "updated" chip (`.friends__flag`) fades in just after the heading and fades out six seconds later, so the row never carries a permanent badge. GitHub Pages has no route to call — there the fetch 404s, the committed copy stands and no chip ever shows — and the nightly job keeps that copy current.
 
 `.github/workflows/friends.yml` runs `tools/refresh_friends.py` every day at 06:17 UTC and pushes the result, and that push republishes GitHub Pages. To pick up a change immediately, run it by hand:
 
