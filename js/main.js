@@ -137,8 +137,13 @@
   // call itself, so a renamed avatar or a new profile picture shows up on the
   // next load. On GitHub Pages that route does not exist, the fetch 404s and the
   // committed copy stays in place.
+  // Only the Freebuff deployment serves that route (and local wrangler does);
+  // asking elsewhere would just log a 404, so the static row stands as-is.
   const friendLinks = $$('.friend');
-  if (friendLinks.length) {
+  const hasFriendsRoute = /\.freebuff\.page$/.test(window.location.hostname) ||
+    window.location.hostname === '127.0.0.1' ||
+    window.location.hostname === 'localhost';
+  if (friendLinks.length && hasFriendsRoute) {
     const ids = friendLinks.map((link) => link.dataset.imvuId).filter((id) => /^\d+$/.test(id));
     if (ids.length) {
       fetch(`api/friends?ids=${ids.join(',')}`, { headers: { accept: 'application/json' } })
