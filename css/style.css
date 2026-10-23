@@ -315,8 +315,10 @@ h1, h2, h3, p {
   min-width: 0px;
 }
 .orbit {
-  /* One size for every viewport: 74% of the window height, 80% of its width,
-     and never tall enough to reach the credit chip or legal strip below. */
+  /* Fallback for a page without JavaScript: 74% of the window height, 80% of
+     its width, and never tall enough to reach the credit chip or legal strip.
+     js/main.js measures those zones and replaces this with the largest ring
+     whose cards stay clear of every one of them. */
   --size: min(74vh, 80vw, calc(100svh - 232px));
   --radius: calc(var(--size) * 0.44);
   --card-w: calc(var(--size) * 0.175);
@@ -860,4 +862,97 @@ body {
   border-color: rgba(160, 100, 200, 0.5);
   background: rgba(118, 0, 188, 0.1);
   outline: none;
+}
+
+/* --------------------------------------------------------- friends, top left */
+.friends {
+  position: absolute;
+  left: var(--pad);
+  top: clamp(10px, 2.2vh, 28px);
+  z-index: 4;
+  width: max-content;
+  max-width: calc(100% - var(--pad) * 2);
+  pointer-events: none;
+}
+.friends__title {
+  margin: 0px;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(14px, 1.3vw, 20px);
+  line-height: 1.05;
+  letter-spacing: 0.005em;
+  color: rgba(232, 235, 237, 0.92);
+  text-shadow: rgba(0, 0, 0, 0.9) 0px 1px 18px;
+}
+.friends__title::after {
+  content: "";
+  display: block;
+  height: 1px;
+  margin-top: clamp(8px, 1.1vh, 13px);
+  background: linear-gradient(90deg, rgba(232, 235, 237, 0.3), rgba(232, 235, 237, 0.02));
+}
+.friends__list {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: clamp(10px, 1.4vw, 22px);
+  margin: clamp(9px, 1.3vh, 15px) 0px 0px;
+  padding: 0px;
+  list-style: none;
+}
+.friend {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(6px, 0.8vh, 9px);
+  color: rgba(232, 235, 237, 0.6);
+  pointer-events: auto;
+  transition: color 0.35s ease;
+}
+.friend__disc {
+  position: relative;
+  display: block;
+  flex: 0 0 auto;
+  width: clamp(34px, 2.8vw, 50px);
+  height: clamp(34px, 2.8vw, 50px);
+  padding: 2px;
+  border-radius: 50%;
+  background: var(--chrome-soft);
+  box-shadow: rgba(0, 0, 0, 0.7) 0px 6px 16px;
+  transition: box-shadow 0.4s var(--ease);
+}
+.friend__pic {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  filter: grayscale(1) contrast(1.1) brightness(0.82);
+  transition: filter 0.45s ease;
+}
+.friend__disc::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  pointer-events: none;
+  box-shadow: rgba(0, 0, 0, 0.55) 0px 0px 14px inset, rgba(232, 235, 237, 0.14) 0px 0px 0px 1px inset;
+}
+.friend__name {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: clamp(9px, 0.75vw, 10.5px);
+  line-height: 1;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+.friend:hover, .friend:focus-visible {
+  color: rgba(255, 255, 255, 0.95);
+}
+.friend:hover .friend__pic, .friend:focus-visible .friend__pic {
+  filter: grayscale(0.15) contrast(1.06) brightness(0.95);
+}
+.friend:hover .friend__disc, .friend:focus-visible .friend__disc {
+  box-shadow: rgba(118, 0, 188, 0.45) 0px 0px 22px, rgba(0, 0, 0, 0.7) 0px 6px 16px;
 }

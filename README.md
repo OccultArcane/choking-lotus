@@ -9,17 +9,31 @@ Single-screen launch page for **Choking Lotus**, an IMVU atelier. A chrome lotus
 
 | Path | What it is |
 | --- | --- |
-| `index.html` | The whole page: backdrop layers, orbit markup, Instagram mark, legal strip, credit notice. |
+| `index.html` | The whole page: backdrop layers, friends row, orbit markup, Instagram mark, legal strip, credit notice. |
 | `css/style.css` | Every rule the page uses — backdrop, orbit mechanics, cards, fluid sizing, reduced-motion handling. |
 | `js/main.js` | Builds the orbit cards, runs the cursor/parallax atmosphere and types the credit notice. |
 | `js/products.js` | Snapshot of the IMVU feed (titles, thumbnails, prices) used as the fallback when the live panel is blocked. |
-| `assets/` | `lotus.webp`, `liquid-swirl.webp` and the product thumbnails. |
+| `assets/` | `lotus.webp`, `liquid-swirl.webp`, the product thumbnails and the `friends/` portraits. |
 | `footer-note.txt` | Text typed into the popup. Edit this file to change the message; no code change needed. |
 | `sites/` | Deploy glue: build script, manifest, asset worker, wrangler config. |
+| `tools/refresh_friends.py` | Pulls the friends' current display names, shop links and portraits from IMVU. |
 
 Product cards refresh themselves: `#imvu-feed-source` loads the gafcodes "new products" panel for the store, and `main.js` reads the rendered links back into the orbit, so new drops appear on reload.
 
-The layout is a single composition, not a desktop one plus a mobile one. Everything inside the orbit is sized from `--size`, and `--size` itself is capped by window height (`74vh`), window width (`80vw`) and the room left by the credit notice and legal strip, so the page scales continuously at any window size without breakpoints.
+The layout is a single composition, not a desktop one plus a mobile one: everything inside the orbit is sized from `--size`, so the page scales continuously at any window size without breakpoints. `--size` is set by `js/main.js`, which measures the friends row, the Instagram mark, the credit chip and the legal strip and picks the largest ring whose cards clear all four with a 12px margin — the products stay as big as the window allows and never touch anything. The CSS `--size` formula is the fallback when JavaScript is off. The friends row sits along the top-left edge at every size; friends, their usernames and their shop links live in the `friends` block of `index.html`.
+
+## Friends row
+
+The four creators in "Shop my friends" come from IMVU's public user lookup (`https://api.imvu.com/user/user-<id>`). Each row carries the creator's numeric IMVU id in `data-imvu-id`; ids never change, so a rename is followed rather than lost. That endpoint sends no `Access-Control-Allow-Origin` header, so the browser cannot call it from the page; the usernames, shop links and portraits are shipped with the site instead and kept current by a scheduled job.
+
+`.github/workflows/friends.yml` runs `tools/refresh_friends.py` every day at 06:17 UTC and pushes the result, and that push republishes GitHub Pages. To pick up a change immediately, run it by hand:
+
+```bash
+pip install pillow
+python tools/refresh_friends.py
+```
+
+It rewrites each row's username and `manufacturers_id` shop link inside the friends block of `index.html`, and `assets/friends/<id>.webp` (160px square). `assets/friends/manifest.json` remembers the source picture for each portrait so an unchanged one is never re-encoded. Who is listed is read from the rows themselves: add one `<a class="friend" data-imvu-id="…">` row with its portrait path and the script picks it up.
 
 ## Local preview
 
@@ -43,7 +57,7 @@ npx wrangler dev --config sites/wrangler.jsonc --port 8788   # verify in workerd
 ```
 
 - **Freebuff Sites** — deploy with `sites/manifest.json` (`assetsDirectory: ../dist`).
-- **GitHub Pages** — automatic. Every push to `main` runs `.github/workflows/deploy.yml`, which rebuilds `dist/` and publishes it. No secrets needed; it uses the built-in token.
+- **GitHub Pages** — automatic. Every push to `main` runs `.github/workflows/deploy.yml`, which rebuilds `dist/` and publishes it. No secrets needed; it uses the built-in token. A nightly job also pushes refreshed friends data, which redeploys in the same way.
 
 Asset paths are relative so the same build works at a domain root and under `/choking-lotus/`.
 

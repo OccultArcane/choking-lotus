@@ -74,6 +74,63 @@
     }).join('');
   }
 
+  /* --------------------------------------------- keep the orbit on its own island */
+  // The cards must never touch the friends row, the Instagram mark, the credit
+  // chip or the legal strip, at any window size. Those four are fixed, so each
+  // one is measured and the orbit is sized to the largest ring whose cards stay
+  // clear of it. The constants mirror css/style.css: cards orbit at 0.44 x
+  // --size and are 0.175 x --size wide by 0.25 x --size tall, so CARD_X and
+  // CARD_Y are half that footprint. How much of it points at an element depends
+  // on the direction from the orbit's centre, which is what `reach` below does.
+  const RADIUS = 0.44;
+  const CARD_X = 0.0875;
+  const CARD_Y = 0.125;
+  const CLEARANCE = 12;
+  const MIN_SIZE = 120;
+  const heroEl = $('.hero');
+  const orbitEl = $('[data-orbit]');
+
+  const fitOrbit = () => {
+    if (!heroEl || !orbitEl) return;
+    const heroBox = heroEl.getBoundingClientRect();
+    if (!heroBox.width || !heroBox.height) return;
+
+    const cx = heroBox.left + heroBox.width / 2;
+    const cy = heroBox.top + heroBox.height / 2;
+    let size = Math.min(heroBox.height * 0.74, heroBox.width * 0.8);
+
+    for (const selector of ['.friends', '.hero__instagram', '.footer-note', '.legal']) {
+      const el = $(selector);
+      if (!el) continue;
+      const box = el.getBoundingClientRect();
+      if (!box.width || !box.height) continue;
+      // Nearest point of the element, and the direction of it from the centre.
+      const qx = Math.min(Math.max(cx, box.left), box.right);
+      const qy = Math.min(Math.max(cy, box.top), box.bottom);
+      const dx = cx - qx;
+      const dy = cy - qy;
+      const distance = Math.hypot(dx, dy);
+      if (distance <= CLEARANCE) {
+        size = MIN_SIZE;
+        continue;
+      }
+      // A card centred toward that point reaches this far past its own centre.
+      const reach = RADIUS + CARD_X * Math.abs(dx) / distance + CARD_Y * Math.abs(dy) / distance;
+      size = Math.min(size, (distance - CLEARANCE) / reach);
+    }
+
+    orbitEl.style.setProperty('--size', `${Math.max(MIN_SIZE, Math.round(size))}px`);
+  };
+
+  if (orbitEl) {
+    fitOrbit();
+    // Runs straight away rather than in a frame: the work is four measurements,
+    // and a hidden tab must still resize correctly when its window changes.
+    window.addEventListener('resize', fitOrbit, { passive: true });
+    window.addEventListener('orientationchange', fitOrbit);
+    if (document.fonts?.ready) document.fonts.ready.then(fitOrbit).catch(() => {});
+  }
+
   /* ------------------------------------------------------ pointer ambience */
 
   const cursor = $('.cursor');
@@ -171,7 +228,10 @@
       window.clearTimeout(typingTimer);
       footerNote.classList.add('is-dismissed');
       footerNote.setAttribute('aria-hidden', 'true');
-      window.setTimeout(() => footerNote.remove(), 750);
+      window.setTimeout(() => {
+        footerNote.remove();
+        fitOrbit();
+      }, 750);
     });
   }
 })();

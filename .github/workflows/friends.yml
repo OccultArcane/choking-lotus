@@ -1,0 +1,47 @@
+name: Refresh friends
+
+# The page cannot read IMVU's user lookup from the browser (the API sends no
+# CORS header), so this job keeps the shipped names, shop links and portraits
+# current and pushes the result. The push republishes GitHub Pages.
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: friends-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Pillow
+        run: pip install --quiet pillow
+
+      - name: Refresh names, links and portraits
+        run: python tools/refresh_friends.py
+
+      - name: Commit when anything changed
+        run: |
+          if [ -z "$(git status --porcelain -- index.html assets/friends)" ]; then
+            echo "Friends row is already current."
+            exit 0
+          fi
+          git config user.name "choking-lotus"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add index.html assets/friends
+          git commit -m "Refresh friends names and portraits from IMVU"
+          git push
