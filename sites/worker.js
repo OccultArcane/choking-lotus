@@ -12,6 +12,9 @@ const MAX_IDS = 12;
 const PRODUCTS_PATH = '/api/products';
 const STORE_LISTING = 'https://www.imvu.com/shop/web_search.php?manufacturers_id=272737258&sort=id&sortorder=desc';
 const SNAPSHOT_PATH = '/assets/products/snapshot.json';
+// Edge cache key for the parsed listing. A path the site does not serve keeps
+// it from colliding with anything cached for the page itself.
+const LISTING_CACHE_PATH = '/api/products-listing';
 const PRODUCT_LIMIT = 8;
 const PRODUCT_URL = 'https://www.imvu.com/shop/product.php?products_id=';
 
@@ -121,7 +124,25 @@ async function snapshotProducts(env, request) {
   }
 }
 
-async function products(env, request) {
+// Copy a response with its cache tag replaced, so a hit is visible without
+// changing the body.
+function tag(response, value) {
+  const headers = new Headers(response.headers);
+  headers.set('x-lotus-cache', value);
+  return new Response(response.body, { status: response.status, headers });
+}
+
+async function products(env, request, ctx) {
+  const cache = caches.default;
+  const key = new Request(new URL(LISTING_CACHE_PATH, request.url));
+  let cached = null;
+  try {
+    cached = await cache.match(key);
+  } catch {
+    // A broken cache must not break the route; fall through to the store.
+  }
+  if (cached) return tag(cached, 'hit');
+
   let list = [];
   try {
     const response = await fetch(STORE_LISTING, {
@@ -136,17 +157,24 @@ async function products(env, request) {
   } catch {
     // Fall through to the snapshot.
   }
-  if (list.length) return json({ products: list, source: 'store' }, 200, 300);
+  if (list.length) {
+    // max-age governs both the browser and this edge entry, so the store is
+    // read once per colo per five minutes rather than once per visitor.
+    const response = tag(json({ products: list, source: 'store' }, 200, 300), 'miss');
+    ctx.waitUntil(cache.put(key, response.clone()).catch(() => {}));
+    return response;
+  }
 
   // IMVU unreachable or the listing changed shape: keep the orbit filled with
-  // the committed snapshot, and try the store again after a minute.
+  // the committed snapshot, and try the store again after a minute. The
+  // fallback is not cached, so recovery is immediate.
   const fallback = await snapshotProducts(env, request);
   if (fallback.length) return json({ products: fallback, source: 'snapshot' }, 200, 60);
   return json({ error: 'listing unavailable' }, 502, 0);
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
     if (request.method !== 'GET' && request.method !== 'HEAD') {
@@ -161,7 +189,7 @@ export default {
     }
 
     if (url.pathname === PRODUCTS_PATH) {
-      return request.method === 'HEAD' ? new Response(null, { status: 200 }) : products(env, request);
+      return request.method === 'HEAD' ? new Response(null, { status: 200 }) : products(env, request, ctx);
     }
 
     const response = await env.ASSETS.fetch(request);
