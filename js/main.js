@@ -17,40 +17,19 @@
   /* ------------------------------------------------------- product cards */
 
   const orbitField = $('[data-orbit-field]');
-  const snapshot = Array.isArray(window.CHOKING_LOTUS_PRODUCTS) ? window.CHOKING_LOTUS_PRODUCTS : [];
-  const snapshotById = new Map(snapshot.map((product) => [String(product.id), product]));
-
-  // The gafcodes panel is a document.write widget rendered into #imvu-feed-source,
-  // so it refreshes itself from the store on every page load. Read it back and
-  // merge in the prices and local thumbnails captured by tools/fetch_products.py.
-  const readLiveFeed = () => {
-    const source = document.getElementById('imvu-feed-source');
-    if (!source) return [];
-    return $$('.productbox a', source).map((link) => {
-      const img = $('img', link);
-      const id = new URL(link.href, window.location.href).searchParams.get('products_id') || '';
-      const title = (img?.getAttribute('title') || '').replace(/^[^\w]+/, '').trim();
-      const known = snapshotById.get(String(id));
-      return {
-        id,
-        name: title || known?.name || 'untitled',
-        img: known?.img || img?.getAttribute('src') || '',
-        url: link.href,
-        price: Number.isFinite(known?.price) ? known.price : null
-      };
-    }).filter((product) => product.id && product.img);
-  };
-
-  // That panel lags the store, so it can list drops the snapshot has already
-  // moved past. Only let it win when its newest product is at least as new as
-  // the shipped one; otherwise the shipped list is the current one.
+  const products = Array.isArray(window.CHOKING_LOTUS_PRODUCTS) ? window.CHOKING_LOTUS_PRODUCTS : [];
   const newestId = (list) => list.reduce((newest, product) => Math.max(newest, Number(product.id) || 0), 0);
-  const liveProducts = readLiveFeed();
-  const products = liveProducts.length && newestId(liveProducts) >= newestId(snapshot) ? liveProducts : snapshot;
+  const angles = [0, 45, 90, 135, 180, 225, 270, 315];
 
-  if (orbitField && products.length) {
-    const angles = [0, 45, 90, 135, 180, 225, 270, 315];
-    orbitField.innerHTML = products.slice(0, 8).map((product, index) => {
+  // Only the Freebuff deployment (and local wrangler) serves the worker routes;
+  // GitHub Pages serves the committed copy and nothing else.
+  const servesLiveRoutes = /\.freebuff\.page$/.test(window.location.hostname) ||
+    window.location.hostname === '127.0.0.1' ||
+    window.location.hostname === 'localhost';
+
+  const renderOrbit = (list) => {
+    if (!orbitField || !list.length) return;
+    orbitField.innerHTML = list.slice(0, 8).map((product, index) => {
       const name = escapeHtml(product.name || 'untitled');
       // Store titles join pieces with "+" ("brun+undercut+scar"); let a long
       // one wrap at those seams instead of breaking mid-word in the label.
@@ -79,6 +58,22 @@
           </div>
         </div>`;
     }).join('');
+  };
+
+  renderOrbit(products);
+
+  // The worker reads the store's own newest-first listing, so a new drop reaches
+  // the Freebuff deployment without a redeploy. The shipped snapshot stays on
+  // screen until the response lands, and is all GitHub Pages ever has.
+  if (orbitField && servesLiveRoutes) {
+    fetch('api/products', { headers: { accept: 'application/json' } })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload) => {
+        const live = Array.isArray(payload?.products) ? payload.products : [];
+        if (!live.length || newestId(live) < newestId(products)) return;
+        renderOrbit(live);
+      })
+      .catch(() => {});
   }
 
   /* --------------------------------------------- keep the orbit on its own island */
@@ -144,8 +139,7 @@
   // call itself, so a renamed avatar or a new profile picture shows up on the
   // next load. On GitHub Pages that route does not exist, the fetch 404s and the
   // committed copy stays in place.
-  // Only the Freebuff deployment serves that route (and local wrangler does);
-  // asking elsewhere would just log a 404, so the static row stands as-is.
+  // Asking elsewhere would just log a 404, so the static row stands as-is.
   const friendLinks = $$('.friend');
   const friendFlag = $('[data-friends-flag]');
   let flagTimer = 0;
@@ -155,10 +149,7 @@
     friendFlag.classList.add('is-visible');
     flagTimer = window.setTimeout(() => friendFlag.classList.remove('is-visible'), 6000);
   };
-  const hasFriendsRoute = /\.freebuff\.page$/.test(window.location.hostname) ||
-    window.location.hostname === '127.0.0.1' ||
-    window.location.hostname === 'localhost';
-  if (friendLinks.length && hasFriendsRoute) {
+  if (friendLinks.length && servesLiveRoutes) {
     const ids = friendLinks.map((link) => link.dataset.imvuId).filter((id) => /^\d+$/.test(id));
     if (ids.length) {
       fetch(`api/friends?ids=${ids.join(',')}`, { headers: { accept: 'application/json' } })

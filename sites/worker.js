@@ -9,6 +9,11 @@ const UPSTREAM = 'https://api.imvu.com/user/user-';
 const USER_ID = /^\d{1,12}$/;
 const MAX_IDS = 12;
 
+const PRODUCTS_PATH = '/api/products';
+const STORE_LISTING = 'https://www.imvu.com/shop/web_search.php?manufacturers_id=272737258&sort=id&sortorder=desc';
+const PRODUCT_LIMIT = 8;
+const PRODUCT_URL = 'https://www.imvu.com/shop/product.php?products_id=';
+
 function json(body, status, maxAge) {
   return new Response(JSON.stringify(body), {
     status,
@@ -69,6 +74,61 @@ async function friends(url) {
   return json({ friends: list }, 200, 300);
 }
 
+/* The page ships a product snapshot, but the store moves on between deploys.
+   The listing is server-rendered HTML with no CORS header, so this route reads
+   it on the server and returns just the cards the orbit needs, which keeps the
+   Freebuff deployment current without a redeploy. GitHub Pages has no route and
+   keeps using the committed snapshot. */
+const ENTITIES = { quot: '"', apos: "'", lt: '<', gt: '>', amp: '&' };
+const decode = (value) => value
+  .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)))
+  .replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCodePoint(parseInt(code, 16)))
+  .replace(/&(quot|apos|lt|gt|amp);/g, (_, name) => ENTITIES[name]);
+
+function productsFromListing(html) {
+  const products = [];
+  const blocks = html.split('<div class="widget-product-wide').slice(1);
+
+  for (const block of blocks) {
+    const id = /\sid="(\d{5,})"/.exec(block)?.[1];
+    const title = /<h3 class="title[^"]*">[\s\S]*?<a [^>]*title="([^"]*)"/.exec(block)?.[1];
+    const image = /<img src="([^"]+)" class="thumbnail"/.exec(block)?.[1];
+    const price = /<span class="price"><span[^>]*>([\d,]+)<\/span>/.exec(block)?.[1];
+    if (!id || !title || !image) continue;
+
+    products.push({
+      id,
+      name: decode(title).replace(/^[^\w]+/, '').trim(),
+      img: decode(image),
+      url: `${PRODUCT_URL}${id}`,
+      price: price ? Number(price.replace(/,/g, '')) : null
+    });
+    if (products.length === PRODUCT_LIMIT) break;
+  }
+
+  return products;
+}
+
+async function products() {
+  try {
+    const response = await fetch(STORE_LISTING, {
+      headers: {
+        accept: 'text/html',
+        'accept-language': 'en',
+        'user-agent': 'Mozilla/5.0 (compatible; choking-lotus-site/1.0)'
+      },
+      signal: AbortSignal.timeout(8000)
+    });
+    if (!response.ok) return json({ error: 'listing unavailable' }, 502, 0);
+
+    const list = productsFromListing(await response.text());
+    if (!list.length) return json({ error: 'listing unreadable' }, 502, 0);
+    return json({ products: list }, 200, 300);
+  } catch {
+    return json({ error: 'listing unavailable' }, 502, 0);
+  }
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -82,6 +142,10 @@ export default {
 
     if (url.pathname === FRIENDS_PATH) {
       return request.method === 'HEAD' ? new Response(null, { status: 200 }) : friends(url);
+    }
+
+    if (url.pathname === PRODUCTS_PATH) {
+      return request.method === 'HEAD' ? new Response(null, { status: 200 }) : products();
     }
 
     const response = await env.ASSETS.fetch(request);
