@@ -17,9 +17,11 @@ const PRODUCT_URL = 'https://www.imvu.com/shop/product.php?products_id=';
 const LISTING_TTL = 5 * 60 * 1000;
 
 // This deployment is not allowed to touch caches.default (the Cache API answers
-// "not permitted"), so the parsed listing is held per isolate instead. Isolates
-// serve many requests, which keeps the store read to roughly once per window.
+// "not permitted"), and isolates are not reused reliably, so the parsed listing
+// is kept in D1 as well: one shared row that every isolate can read. The
+// in-memory copy just saves the round trip when an isolate is reused.
 let cachedListing = { products: [], at: 0 };
+const CREATE_TABLE = 'CREATE TABLE IF NOT EXISTS listing_cache (id INTEGER PRIMARY KEY, payload TEXT NOT NULL, fetched_at INTEGER NOT NULL)';
 
 function json(body, status, maxAge) {
   return new Response(JSON.stringify(body), {
@@ -135,9 +137,52 @@ async function snapshotProducts(env, request) {
   }
 }
 
+async function readShared(env) {
+  if (!env?.LISTING_DB) return null;
+  try {
+    const row = await env.LISTING_DB
+      .prepare('SELECT payload, fetched_at FROM listing_cache WHERE id = 1')
+      .first();
+    if (!row?.payload) return null;
+    if (Date.now() - Number(row.fetched_at) > LISTING_TTL) return null;
+
+    const parsed = JSON.parse(row.payload);
+    return Array.isArray(parsed) && parsed.length ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+async function writeShared(env, list) {
+  if (!env?.LISTING_DB) return;
+  const payload = JSON.stringify(list);
+  const write = () => env.LISTING_DB
+    .prepare('INSERT INTO listing_cache (id, payload, fetched_at) VALUES (1, ?, ?) ON CONFLICT(id) DO UPDATE SET payload = excluded.payload, fetched_at = excluded.fetched_at')
+    .bind(payload, Date.now())
+    .run();
+
+  try {
+    await write();
+  } catch {
+    // Almost certainly the first write before the table exists.
+    try {
+      await env.LISTING_DB.prepare(CREATE_TABLE).run();
+      await write();
+    } catch {
+      // A failed write only means the next request reads the store again.
+    }
+  }
+}
+
 async function products(env, request) {
   if (cachedListing.products.length && Date.now() - cachedListing.at < LISTING_TTL) {
-    return tag(json({ products: cachedListing.products, source: 'store' }, 200, 300), 'hit');
+    return tag(json({ products: cachedListing.products, source: 'store' }, 200, 300), 'memory');
+  }
+
+  const shared = await readShared(env);
+  if (shared) {
+    cachedListing = { products: shared, at: Date.now() };
+    return tag(json({ products: shared, source: 'store' }, 200, 300), 'shared');
   }
 
   let list = [];
@@ -156,6 +201,7 @@ async function products(env, request) {
   }
   if (list.length) {
     cachedListing = { products: list, at: Date.now() };
+    await writeShared(env, list);
     return tag(json({ products: list, source: 'store' }, 200, 300), 'miss');
   }
 
