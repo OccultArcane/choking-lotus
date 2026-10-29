@@ -34,12 +34,12 @@ jobs:
 
       - name: Commit when anything changed
         run: |
-          if [ -z "$(git status --porcelain -- js/products.js assets/products)" ]; then
+          git add js/products.js assets/products
+          if git diff --cached --quiet; then
             echo "Product snapshot is already current."
             exit 0
           fi
           git config user.name "choking-lotus"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add js/products.js assets/products
           git commit -m "Refresh newest products from the IMVU store"
           git push
