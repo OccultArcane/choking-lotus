@@ -12,11 +12,14 @@ const MAX_IDS = 12;
 const PRODUCTS_PATH = '/api/products';
 const STORE_LISTING = 'https://www.imvu.com/shop/web_search.php?manufacturers_id=272737258&sort=id&sortorder=desc';
 const SNAPSHOT_PATH = '/assets/products/snapshot.json';
-// Edge cache key for the parsed listing. A path the site does not serve keeps
-// it from colliding with anything cached for the page itself.
-const LISTING_CACHE_PATH = '/api/products-listing';
 const PRODUCT_LIMIT = 8;
 const PRODUCT_URL = 'https://www.imvu.com/shop/product.php?products_id=';
+const LISTING_TTL = 5 * 60 * 1000;
+
+// This deployment is not allowed to touch caches.default (the Cache API answers
+// "not permitted"), so the parsed listing is held per isolate instead. Isolates
+// serve many requests, which keeps the store read to roughly once per window.
+let cachedListing = { products: [], at: 0 };
 
 function json(body, status, maxAge) {
   return new Response(JSON.stringify(body), {
@@ -27,6 +30,14 @@ function json(body, status, maxAge) {
       'x-content-type-options': 'nosniff'
     }
   });
+}
+
+// Copy a response with a cache tag attached, so a hit is visible without
+// changing the body.
+function tag(response, value) {
+  const headers = new Headers(response.headers);
+  headers.set('x-lotus-cache', value);
+  return new Response(response.body, { status: response.status, headers });
 }
 
 /* api.imvu.com sends no Access-Control-Allow-Origin header, so the page cannot
@@ -124,24 +135,10 @@ async function snapshotProducts(env, request) {
   }
 }
 
-// Copy a response with its cache tag replaced, so a hit is visible without
-// changing the body.
-function tag(response, value) {
-  const headers = new Headers(response.headers);
-  headers.set('x-lotus-cache', value);
-  return new Response(response.body, { status: response.status, headers });
-}
-
-async function products(env, request, ctx) {
-  const cache = caches.default;
-  const key = new Request(new URL(LISTING_CACHE_PATH, request.url));
-  let cached = null;
-  try {
-    cached = await cache.match(key);
-  } catch {
-    // A broken cache must not break the route; fall through to the store.
+async function products(env, request) {
+  if (cachedListing.products.length && Date.now() - cachedListing.at < LISTING_TTL) {
+    return tag(json({ products: cachedListing.products, source: 'store' }, 200, 300), 'hit');
   }
-  if (cached) return tag(cached, 'hit');
 
   let list = [];
   try {
@@ -158,11 +155,8 @@ async function products(env, request, ctx) {
     // Fall through to the snapshot.
   }
   if (list.length) {
-    // max-age governs both the browser and this edge entry, so the store is
-    // read once per colo per five minutes rather than once per visitor.
-    const response = tag(json({ products: list, source: 'store' }, 200, 300), 'miss');
-    ctx.waitUntil(cache.put(key, response.clone()).catch(() => {}));
-    return response;
+    cachedListing = { products: list, at: Date.now() };
+    return tag(json({ products: list, source: 'store' }, 200, 300), 'miss');
   }
 
   // IMVU unreachable or the listing changed shape: keep the orbit filled with
@@ -174,7 +168,7 @@ async function products(env, request, ctx) {
 }
 
 export default {
-  async fetch(request, env, ctx) {
+  async fetch(request, env) {
     const url = new URL(request.url);
 
     if (request.method !== 'GET' && request.method !== 'HEAD') {
@@ -189,7 +183,7 @@ export default {
     }
 
     if (url.pathname === PRODUCTS_PATH) {
-      return request.method === 'HEAD' ? new Response(null, { status: 200 }) : products(env, request, ctx);
+      return request.method === 'HEAD' ? new Response(null, { status: 200 }) : products(env, request);
     }
 
     const response = await env.ASSETS.fetch(request);
