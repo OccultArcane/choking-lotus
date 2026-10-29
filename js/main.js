@@ -18,7 +18,6 @@
 
   const orbitField = $('[data-orbit-field]');
   const products = Array.isArray(window.CHOKING_LOTUS_PRODUCTS) ? window.CHOKING_LOTUS_PRODUCTS : [];
-  const newestId = (list) => list.reduce((newest, product) => Math.max(newest, Number(product.id) || 0), 0);
   const angles = [0, 45, 90, 135, 180, 225, 270, 315];
 
   // Only the Freebuff deployment (and local wrangler) serves the worker routes;
@@ -70,7 +69,7 @@
       .then((response) => (response.ok ? response.json() : null))
       .then((payload) => {
         const live = Array.isArray(payload?.products) ? payload.products : [];
-        if (!live.length || newestId(live) < newestId(products)) return;
+        if (!live.length) return;
         renderOrbit(live);
       })
       .catch(() => {});
