@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import html
+import json
 import re
 import sys
 import urllib.request
@@ -29,6 +30,8 @@ USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTM
 
 PRODUCTS_JS = ROOT / "js" / "products.js"
 THUMB_DIR = ROOT / "assets" / "products"
+# Same list as JSON, so the worker can serve it when IMVU cannot be reached.
+SNAPSHOT_JSON = THUMB_DIR / "snapshot.json"
 
 BLOCK = re.compile(r'<div class="widget-product-wide[^"]*"\s+id="(\d+)"(.*?)(?=<div class="widget-product-wide|</div>\s*<div class="pagenav bottom")', re.S)
 TITLE = re.compile(r'<h3 class="title[^"]*">.*?<a [^>]*title="([^"]*)"', re.S)
@@ -113,6 +116,11 @@ def write_module(products: list[dict]) -> None:
     # LF, like the committed blob: the scheduled job runs on Linux, where a CRLF
     # file would read as a full rewrite and commit the same thing every night.
     PRODUCTS_JS.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="")
+    SNAPSHOT_JSON.write_text(
+        json.dumps({"products": products}, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+        newline=""
+    )
 
 
 def main() -> int:
@@ -131,7 +139,7 @@ def main() -> int:
 
     products = download(products)
     write_module(products)
-    print(f"wrote {PRODUCTS_JS.relative_to(ROOT)}")
+    print(f"wrote {PRODUCTS_JS.relative_to(ROOT)} and {SNAPSHOT_JSON.relative_to(ROOT)}")
     return 0
 
 

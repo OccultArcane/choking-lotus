@@ -21,7 +21,7 @@ Single-screen launch page for **Choking Lotus**, an IMVU atelier. A chrome lotus
 
 ## Products
 
-The orbit shows the store's eight newest products. On the Freebuff deployment `sites/worker.js` answers a same-origin `GET /api/products` route that reads the store's newest-first listing on the server (cached for five minutes, since the browser cannot fetch the listing itself), and `js/main.js` applies the result on load. A new drop therefore appears there without a redeploy. GitHub Pages has no such route, so it shows the snapshot committed in `js/products.js`.
+The orbit shows the store's eight newest products. On the Freebuff deployment `sites/worker.js` answers a same-origin `GET /api/products` route that reads the store's newest-first listing on the server (cached for five minutes, since the browser cannot fetch the listing itself), and `js/main.js` applies the result on load. A new drop therefore appears there without a redeploy. If the listing cannot be fetched, the route serves the committed snapshot from `assets/products/snapshot.json` instead — with a one-minute cache, so it returns to the live listing quickly. GitHub Pages has no such route, so it shows the snapshot committed in `js/products.js`.
 
 The scheduled job rebuilds that snapshot so Pages stays current:
 
@@ -29,7 +29,7 @@ The scheduled job rebuilds that snapshot so Pages stays current:
 python tools/fetch_products.py
 ```
 
-It writes `js/products.js` and `assets/products/NN-<id>.jpg`, and deletes thumbnails whose products have dropped out of the newest eight.
+It writes `js/products.js`, the matching `assets/products/snapshot.json` that the worker falls back to, and `assets/products/NN-<id>.jpg`, and deletes thumbnails whose products have dropped out of the newest eight.
 
 `.github/workflows/products.yml` runs it every day at 06:43 UTC and pushes the result, and that push republishes GitHub Pages. To pick up a drop immediately, run the workflow from Actions → Refresh products, or run the command above and commit. The Freebuff deployment reads the live listing, so it does not wait for any of this.
 

@@ -11,6 +11,7 @@ const MAX_IDS = 12;
 
 const PRODUCTS_PATH = '/api/products';
 const STORE_LISTING = 'https://www.imvu.com/shop/web_search.php?manufacturers_id=272737258&sort=id&sortorder=desc';
+const SNAPSHOT_PATH = '/assets/products/snapshot.json';
 const PRODUCT_LIMIT = 8;
 const PRODUCT_URL = 'https://www.imvu.com/shop/product.php?products_id=';
 
@@ -109,7 +110,19 @@ function productsFromListing(html) {
   return products;
 }
 
-async function products() {
+async function snapshotProducts(env, request) {
+  try {
+    const response = await env.ASSETS.fetch(new URL(SNAPSHOT_PATH, request.url));
+    if (!response.ok) return [];
+    const payload = await response.json();
+    return Array.isArray(payload?.products) ? payload.products : [];
+  } catch {
+    return [];
+  }
+}
+
+async function products(env, request) {
+  let list = [];
   try {
     const response = await fetch(STORE_LISTING, {
       headers: {
@@ -119,14 +132,17 @@ async function products() {
       },
       signal: AbortSignal.timeout(8000)
     });
-    if (!response.ok) return json({ error: 'listing unavailable' }, 502, 0);
-
-    const list = productsFromListing(await response.text());
-    if (!list.length) return json({ error: 'listing unreadable' }, 502, 0);
-    return json({ products: list }, 200, 300);
+    if (response.ok) list = productsFromListing(await response.text());
   } catch {
-    return json({ error: 'listing unavailable' }, 502, 0);
+    // Fall through to the snapshot.
   }
+  if (list.length) return json({ products: list, source: 'store' }, 200, 300);
+
+  // IMVU unreachable or the listing changed shape: keep the orbit filled with
+  // the committed snapshot, and try the store again after a minute.
+  const fallback = await snapshotProducts(env, request);
+  if (fallback.length) return json({ products: fallback, source: 'snapshot' }, 200, 60);
+  return json({ error: 'listing unavailable' }, 502, 0);
 }
 
 export default {
@@ -145,7 +161,7 @@ export default {
     }
 
     if (url.pathname === PRODUCTS_PATH) {
-      return request.method === 'HEAD' ? new Response(null, { status: 200 }) : products();
+      return request.method === 'HEAD' ? new Response(null, { status: 200 }) : products(env, request);
     }
 
     const response = await env.ASSETS.fetch(request);
