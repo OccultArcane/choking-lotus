@@ -22,7 +22,7 @@
 
   // The gafcodes panel is a document.write widget rendered into #imvu-feed-source,
   // so it refreshes itself from the store on every page load. Read it back and
-  // merge in the prices captured by tools/fetch_products.py.
+  // merge in the prices and local thumbnails captured by tools/fetch_products.py.
   const readLiveFeed = () => {
     const source = document.getElementById('imvu-feed-source');
     if (!source) return [];
@@ -41,13 +41,20 @@
     }).filter((product) => product.id && product.img);
   };
 
+  // That panel lags the store, so it can list drops the snapshot has already
+  // moved past. Only let it win when its newest product is at least as new as
+  // the shipped one; otherwise the shipped list is the current one.
+  const newestId = (list) => list.reduce((newest, product) => Math.max(newest, Number(product.id) || 0), 0);
   const liveProducts = readLiveFeed();
-  const products = liveProducts.length ? liveProducts : snapshot;
+  const products = liveProducts.length && newestId(liveProducts) >= newestId(snapshot) ? liveProducts : snapshot;
 
   if (orbitField && products.length) {
     const angles = [0, 45, 90, 135, 180, 225, 270, 315];
     orbitField.innerHTML = products.slice(0, 8).map((product, index) => {
       const name = escapeHtml(product.name || 'untitled');
+      // Store titles join pieces with "+" ("brun+undercut+scar"); let a long
+      // one wrap at those seams instead of breaking mid-word in the label.
+      const nameMarkup = name.replace(/\+/g, '+<wbr>');
       const id = escapeHtml(product.id || '');
       const angle = angles[index % angles.length];
       const href = escapeHtml(product.url || `https://www.imvu.com/shop/product.php?products_id=${id}`);
@@ -64,7 +71,7 @@
                 <span class="orbit-card__plate">
                   <img src="${img}" alt="${name} — IMVU product by Choking Lotus" width="100" height="80" loading="eager" decoding="async">
                 </span>
-                <span class="orbit-card__name">${name}</span>
+                <span class="orbit-card__name">${nameMarkup}</span>
                 <span class="orbit-card__price"><span class="orbit-card__price-label">price:</span><span class="orbit-card__price-value">${price}</span></span>
               </span>
               <span class="orbit-card__sheen" aria-hidden="true"></span>
