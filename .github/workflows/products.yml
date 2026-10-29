@@ -1,0 +1,45 @@
+name: Refresh products
+
+# The gafcodes panel on the page lags the store, so new drops only reach the
+# orbit once js/products.js is regenerated. This job rebuilds that snapshot from
+# the store's newest-first listing and pushes any change; the push republishes
+# GitHub Pages. The Freebuff deployment still needs a redeploy to pick it up.
+
+on:
+  schedule:
+    - cron: "43 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: products-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Refresh newest products and thumbnails
+        run: python tools/fetch_products.py
+
+      - name: Commit when anything changed
+        run: |
+          if [ -z "$(git status --porcelain -- js/products.js assets/products)" ]; then
+            echo "Product snapshot is already current."
+            exit 0
+          fi
+          git config user.name "choking-lotus"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add js/products.js assets/products
+          git commit -m "Refresh newest products from the IMVU store"
+          git push

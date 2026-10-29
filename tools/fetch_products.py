@@ -108,9 +108,11 @@ def write_module(products: list[dict]) -> None:
         )
         for product in products
     ]
-    lines.append(",\r\n".join(rows))
+    lines.append(",\n".join(rows))
     lines.append("];")
-    PRODUCTS_JS.write_text("\r\n".join(lines) + "\r\n", encoding="utf-8", newline="")
+    # LF, like the committed blob: the scheduled job runs on Linux, where a CRLF
+    # file would read as a full rewrite and commit the same thing every night.
+    PRODUCTS_JS.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="")
 
 
 def main() -> int:

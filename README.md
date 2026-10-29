@@ -31,6 +31,8 @@ python tools/fetch_products.py
 
 It writes `js/products.js` and `assets/products/NN-<id>.jpg`, and deletes thumbnails whose products have dropped out of the newest eight.
 
+`.github/workflows/products.yml` runs it every day at 06:43 UTC and pushes the result, and that push republishes GitHub Pages. To pick up a drop immediately, run the workflow from Actions → Refresh products, or run the command above and commit. The Freebuff deployment only changes when it is redeployed.
+
 ## Layout
 
 The layout is a single composition, not a desktop one plus a mobile one: everything inside the orbit is sized from `--size`, so the page scales continuously at any window size without breakpoints. `--size` is set by `js/main.js`, which measures the friends row, the Instagram mark, the credit chip and the legal strip and picks the largest ring whose cards clear all four with a 12px margin — the products stay as big as the window allows and never touch anything. The CSS `--size` formula is the fallback when JavaScript is off. The friends row sits along the top-left edge at every size; friends, their usernames and their shop links live in the `friends` block of `index.html`.
@@ -72,7 +74,7 @@ npx wrangler dev --config sites/wrangler.jsonc --port 8788   # verify in workerd
 ```
 
 - **Freebuff Sites** — deploy with `sites/manifest.json` (`assetsDirectory: ../dist`).
-- **GitHub Pages** — automatic. Every push to `main` runs `.github/workflows/deploy.yml`, which rebuilds `dist/` and publishes it. No secrets needed; it uses the built-in token. A nightly job also pushes refreshed friends data, which redeploys in the same way.
+- **GitHub Pages** — automatic. Every push to `main` runs `.github/workflows/deploy.yml`, which rebuilds `dist/` and publishes it. No secrets needed; it uses the built-in token. Nightly jobs for friends and products also push refreshed data, which redeploys in the same way.
 
 Asset paths are relative so the same build works at a domain root and under `/choking-lotus/`.
 
