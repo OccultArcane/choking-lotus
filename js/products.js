@@ -4,12 +4,12 @@
    Regenerate with: python tools/fetch_products.py
    8 products, newest first. */
 window.CHOKING_LOTUS_PRODUCTS = [
-  { id: "76486032", name: "wine lexi", img: "assets/products/01-76486032.jpg", url: "https://www.imvu.com/shop/product.php?products_id=76486032", price: 666 },
-  { id: "76485849", name: "pinky lexi", img: "assets/products/02-76485849.jpg", url: "https://www.imvu.com/shop/product.php?products_id=76485849", price: 666 },
-  { id: "76485570", name: "indigo lexi", img: "assets/products/03-76485570.jpg", url: "https://www.imvu.com/shop/product.php?products_id=76485570", price: 666 },
-  { id: "76474013", name: "red bones f", img: "assets/products/04-76474013.jpg", url: "https://www.imvu.com/shop/product.php?products_id=76474013", price: 666 },
-  { id: "76473675", name: "anodized bones f", img: "assets/products/05-76473675.jpg", url: "https://www.imvu.com/shop/product.php?products_id=76473675", price: 666 },
-  { id: "76439889", name: "eye c u sneaker", img: "assets/products/06-76439889.jpg", url: "https://www.imvu.com/shop/product.php?products_id=76439889", price: 666 },
-  { id: "76421297", name: "black gas mask m", img: "assets/products/07-76421297.jpg", url: "https://www.imvu.com/shop/product.php?products_id=76421297", price: 666 },
-  { id: "76421292", name: "black gas mask f", img: "assets/products/08-76421292.jpg", url: "https://www.imvu.com/shop/product.php?products_id=76421292", price: 666 }
+  { id: "76494177", name: "pinky torn", img: "assets/products/01-76494177.jpg", url: "https://www.imvu.com/shop/product.php?products_id=76494177", price: 777 },
+  { id: "76493541", name: "indigo torn", img: "assets/products/02-76493541.jpg", url: "https://www.imvu.com/shop/product.php?products_id=76493541", price: 777 },
+  { id: "76486032", name: "wine lexi", img: "assets/products/03-76486032.jpg", url: "https://www.imvu.com/shop/product.php?products_id=76486032", price: 666 },
+  { id: "76485849", name: "pinky lexi", img: "assets/products/04-76485849.jpg", url: "https://www.imvu.com/shop/product.php?products_id=76485849", price: 666 },
+  { id: "76485570", name: "indigo lexi", img: "assets/products/05-76485570.jpg", url: "https://www.imvu.com/shop/product.php?products_id=76485570", price: 666 },
+  { id: "76474013", name: "red bones f", img: "assets/products/06-76474013.jpg", url: "https://www.imvu.com/shop/product.php?products_id=76474013", price: 666 },
+  { id: "76473675", name: "anodized bones f", img: "assets/products/07-76473675.jpg", url: "https://www.imvu.com/shop/product.php?products_id=76473675", price: 666 },
+  { id: "76439889", name: "eye c u sneaker", img: "assets/products/08-76439889.jpg", url: "https://www.imvu.com/shop/product.php?products_id=76439889", price: 666 }
 ];
